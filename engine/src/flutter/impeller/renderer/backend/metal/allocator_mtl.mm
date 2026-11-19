@@ -81,7 +81,7 @@ static MTLResourceOptions ToMTLResourceOptions(StorageMode type,
                                                bool supports_uma) {
   switch (type) {
     case StorageMode::kHostVisible:
-#if FML_OS_IOS
+#if FML_OS_IOS && !TARGET_OS_MACCATALYST
       return MTLResourceStorageModeShared;
 #else
       if (supports_uma) {
@@ -113,7 +113,7 @@ static MTLStorageMode ToMTLStorageMode(StorageMode mode,
                                        bool supports_uma) {
   switch (mode) {
     case StorageMode::kHostVisible:
-#if FML_OS_IOS
+#if FML_OS_IOS && !TARGET_OS_MACCATALYST
       return MTLStorageModeShared;
 #else
       if (supports_uma) {

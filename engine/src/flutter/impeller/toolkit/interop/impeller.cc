@@ -11,8 +11,6 @@
 #include "flutter/fml/mapping.h"
 #include "impeller/base/validation.h"
 #include "impeller/geometry/scalar.h"
-#include "impeller/renderer/backend/gles/context_gles.h"
-#include "impeller/renderer/backend/gles/texture_gles.h"
 #include "impeller/renderer/context.h"
 #include "impeller/toolkit/interop/color_filter.h"
 #include "impeller/toolkit/interop/color_source.h"
@@ -36,6 +34,8 @@
 #include "impeller/toolkit/interop/typography_context.h"
 
 #if IMPELLER_ENABLE_OPENGLES
+#include "impeller/renderer/backend/gles/context_gles.h"
+#include "impeller/renderer/backend/gles/texture_gles.h"
 #include "impeller/toolkit/interop/backend/gles/context_gles.h"
 #include "impeller/toolkit/interop/backend/gles/surface_gles.h"
 #endif  // IMPELLER_ENABLE_OPENGLES
@@ -75,7 +75,9 @@ DEFINE_PEER_GETTER(ParagraphStyle, ImpellerParagraphStyle);
 DEFINE_PEER_GETTER(Path, ImpellerPath);
 DEFINE_PEER_GETTER(PathBuilder, ImpellerPathBuilder);
 DEFINE_PEER_GETTER(Surface, ImpellerSurface);
+#if IMPELLER_ENABLE_VULKAN
 DEFINE_PEER_GETTER(SwapchainVK, ImpellerVulkanSwapchain);
+#endif  // IMPELLER_ENABLE_VULKAN
 DEFINE_PEER_GETTER(Texture, ImpellerTexture);
 DEFINE_PEER_GETTER(TypographyContext, ImpellerTypographyContext);
 
@@ -189,7 +191,7 @@ bool ImpellerContextGetVulkanInfo(ImpellerContext IMPELLER_NONNULL context,
       ->GetInfo(*out_vulkan_info);
 #else   // IMPELLER_ENABLE_VULKAN
   VALIDATION_LOG << "Vulkan not available.";
-  return nullptr;
+  return false;
 #endif  // IMPELLER_ENABLE_VULKAN
 }
 
@@ -222,7 +224,12 @@ void ImpellerVulkanSwapchainRelease(ImpellerVulkanSwapchain swapchain) {
 IMPELLER_EXTERN_C
 ImpellerSurface ImpellerVulkanSwapchainAcquireNextSurfaceNew(
     ImpellerVulkanSwapchain swapchain) {
+#if IMPELLER_ENABLE_VULKAN
   return GetPeer(swapchain)->AcquireNextSurface().Leak();
+#else   // IMPELLER_ENABLE_VULKAN
+  VALIDATION_LOG << "Vulkan not available.";
+  return nullptr;
+#endif  // IMPELLER_ENABLE_VULKAN
 }
 
 IMPELLER_EXTERN_C ImpellerDisplayListBuilder
@@ -650,6 +657,7 @@ ImpellerTexture ImpellerTextureCreateWithOpenGLTextureHandleNew(
     return nullptr;
   }
 
+#if IMPELLER_ENABLE_OPENGLES
   const auto& impeller_context_gl =
       impeller::ContextGLES::Cast(*impeller_context);
   const auto& reactor = impeller_context_gl.GetReactor();
@@ -675,6 +683,9 @@ ImpellerTexture ImpellerTextureCreateWithOpenGLTextureHandleNew(
   return Create<Texture>(impeller::Context::BackendType::kOpenGLES,
                          std::move(texture))
       .Leak();
+#else   // IMPELLER_ENABLE_OPENGLES
+  return nullptr;
+#endif  // IMPELLER_ENABLE_OPENGLES
 }
 
 IMPELLER_EXTERN_C
@@ -695,9 +706,13 @@ uint64_t ImpellerTextureGetOpenGLHandle(ImpellerTexture texture) {
     VALIDATION_LOG << "Can only fetch the texture handle of an OpenGL texture.";
     return 0u;
   }
+#if IMPELLER_ENABLE_OPENGLES
   return TextureGLES::Cast(*interop_texture->GetTexture())
       .GetGLHandle()
       .value_or(0u);
+#else   // IMPELLER_ENABLE_OPENGLES
+  return 0u;
+#endif  // IMPELLER_ENABLE_OPENGLES
 }
 
 IMPELLER_EXTERN_C

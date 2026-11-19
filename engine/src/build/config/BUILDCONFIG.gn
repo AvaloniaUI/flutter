@@ -607,6 +607,9 @@ if (custom_toolchain != "") {
     } else {
       set_default_toolchain("//build/toolchain/mac:ios_clang_x64_sim")
     }
+  } else if (target_cpu == "x64") {
+    # Mac Catalyst x64.
+    set_default_toolchain("//build/toolchain/mac:ios_clang_x64")
   } else {
     set_default_toolchain("//build/toolchain/mac:ios_clang_arm")
   }

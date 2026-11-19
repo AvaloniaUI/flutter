@@ -427,6 +427,26 @@ template("mac_toolchain") {
 }
 
 if (is_ios) {
+  # The platform flags of the iOS toolchains: the minimum OS version, or for
+  # Mac Catalyst (whose version is in its target triple, see
+  # //build/config/compiler) the iOS frameworks and headers of the macOS SDK.
+  # They are system paths, so warnings in the UIKit headers do not fail the
+  # build.
+  if (ios_target_platform == "maccatalyst") {
+    _ios_support =
+        rebase_path("$ios_sdk_path/System/iOSSupport", root_build_dir)
+    _ios_platform_flags = "-iframework $_ios_support/System/Library/Frameworks -isystem $_ios_support/usr/include"
+    _ios_sim_platform_flags = _ios_platform_flags
+  } else if (ios_target_platform == "tvos") {
+    _ios_platform_flags = "-mtvos-version-min=$tvos_deployment_target"
+    _ios_sim_platform_flags =
+        "-mtvos-simulator-version-min=$tvos_deployment_target"
+  } else {
+    _ios_platform_flags = "-miphoneos-version-min=$ios_deployment_target"
+    _ios_sim_platform_flags =
+        "-mios-simulator-version-min=$ios_deployment_target"
+  }
+
   # Toolchain used for iOS device targets.
   mac_toolchain("ios_clang_arm") {
     toolchain_cpu = "arm"
@@ -441,8 +461,24 @@ if (is_ios) {
     is_clang = true
 
     sysroot_rel = rebase_path(ios_sdk_path, root_build_dir)
-    sysroot_flags =
-        "-isysroot $sysroot_rel -miphoneos-version-min=$ios_deployment_target"
+    sysroot_flags = "-isysroot $sysroot_rel $_ios_platform_flags"
+  }
+
+  # Toolchain used for Mac Catalyst x64 targets.
+  mac_toolchain("ios_clang_x64") {
+    toolchain_cpu = "x64"
+    toolchain_os = "mac"
+    prefix = rebased_clang_dir
+    ar = "${prefix}/llvm-ar"
+    asm = "${prefix}/clang"
+    cc = "${cxx_prefix}${prefix}/clang"
+    cxx = "${cxx_prefix}${prefix}/clang++"
+    objc = "${objc_prefix}${prefix}/clang++"
+    ld = "${link_prefix}${prefix}/clang++"
+    is_clang = true
+
+    sysroot_rel = rebase_path(ios_sdk_path, root_build_dir)
+    sysroot_flags = "-isysroot $sysroot_rel $_ios_platform_flags"
   }
 
   # Toolchain used for iOS simulator targets (arm64).
@@ -459,7 +495,7 @@ if (is_ios) {
     is_clang = true
 
     sysroot_rel = rebase_path(ios_sdk_path, root_build_dir)
-    sysroot_flags = "-isysroot $sysroot_rel -mios-simulator-version-min=$ios_deployment_target"
+    sysroot_flags = "-isysroot $sysroot_rel $_ios_sim_platform_flags"
   }
 
   # Toolchain used for iOS simulator targets (x64).
@@ -476,7 +512,7 @@ if (is_ios) {
     is_clang = true
 
     sysroot_rel = rebase_path(ios_sdk_path, root_build_dir)
-    sysroot_flags = "-isysroot $sysroot_rel -mios-simulator-version-min=$ios_deployment_target"
+    sysroot_flags = "-isysroot $sysroot_rel $_ios_sim_platform_flags"
   }
 }
 

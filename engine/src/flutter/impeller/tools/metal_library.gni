@@ -60,7 +60,15 @@ template("metal_library") {
       outputs += [ "$root_out_dir/shaders/$metal_library_name.metallibsym" ]
     }
 
-    if (is_ios) {
+    if (is_ios && ios_target_platform == "maccatalyst") {
+      args += [ "--platform=maccatalyst" ]
+    } else if (is_ios && ios_target_platform == "tvos") {
+      if (use_ios_simulator) {
+        args += [ "--platform=tvos-simulator" ]
+      } else {
+        args += [ "--platform=tvos" ]
+      }
+    } else if (is_ios) {
       if (use_ios_simulator) {
         args += [ "--platform=ios-simulator" ]
       } else {

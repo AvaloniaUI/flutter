@@ -104,7 +104,7 @@ static std::unique_ptr<Capabilities> InferMetalCapabilities(
       .SetSupportsTextureCompression(
           CompressedTextureFamily::kASTCHDR,
           DeviceSupportsTextureCompressionAstcHdr(device))
-#if FML_OS_IOS && !TARGET_OS_SIMULATOR
+#if FML_OS_IOS && !TARGET_OS_SIMULATOR && !TARGET_OS_MACCATALYST
       .SetMinimumUniformAlignment(16)
 #else
       .SetMinimumUniformAlignment(256)

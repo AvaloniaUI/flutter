@@ -53,6 +53,12 @@ def get_out_dir(args):
   if args.target_os == 'fuchsia' and args.fuchsia_cpu is not None:
     target_dir.append(args.fuchsia_cpu)
 
+  if args.target_os == 'ios' and args.ios_platform != 'ios':
+    target_dir.append(args.ios_platform)
+
+  if args.target_os == 'ios' and args.ios_cpu != 'arm64':
+    target_dir.append(args.ios_cpu)
+
   # This exists for backwards compatibility of tests that are being run
   # on LUCI. This can be removed in coordination with a LUCI change:
   # https://github.com/flutter/flutter/issues/76547
@@ -177,7 +183,7 @@ def get_target_cpu(args):
   if args.target_os == 'ios':
     if args.simulator:
       return args.simulator_cpu
-    return 'arm64'
+    return args.ios_cpu
   if args.target_os == 'mac':
     return args.mac_cpu
   if args.target_os == 'linux':
@@ -636,6 +642,9 @@ def to_gn_args(args):
   if args.target_triple:
     gn_args['custom_target_triple'] = args.target_triple
 
+  if args.target_os == 'ios':
+    gn_args['ios_target_platform'] = args.ios_platform
+
   # Enable Metal on iOS builds.
   if args.target_os == 'ios':
     gn_args['shell_enable_gl'] = False
@@ -971,6 +980,22 @@ def parse_args(args):
   parser.add_argument('--mac', dest='target_os', action='store_const', const='mac')
   parser.add_argument('--mac-cpu', type=str, choices=['x64', 'arm64'], default='x64')
   parser.add_argument('--simulator', action='store_true', default=False)
+  parser.add_argument(
+      '--ios-platform',
+      type=str,
+      choices=['ios', 'tvos', 'maccatalyst'],
+      default='ios',
+      help='The Apple platform of an --ios build: iOS, tvOS (with --simulator for '
+      'its simulator) or Mac Catalyst.'
+  )
+  parser.add_argument(
+      '--ios-cpu',
+      type=str,
+      choices=['arm64', 'x64'],
+      default='arm64',
+      help='The CPU of a device (not --simulator) --ios build. x64 is only for '
+      'Mac Catalyst.'
+  )
   parser.add_argument('--linux', dest='target_os', action='store_const', const='linux')
   parser.add_argument('--fuchsia', dest='target_os', action='store_const', const='fuchsia')
   parser.add_argument('--wasm', dest='target_os', action='store_const', const='wasm')
@@ -1313,6 +1338,18 @@ def validate_args(args):
           'to use `--simulator-cpu`?'
       )
       valid = False
+
+  if args.ios_platform != 'ios' and args.target_os != 'ios':
+    print('--ios-platform needs --ios.')
+    valid = False
+
+  if args.ios_platform == 'maccatalyst' and args.simulator:
+    print('Mac Catalyst has no simulator.')
+    valid = False
+
+  if args.ios_cpu != 'arm64' and (args.ios_platform != 'maccatalyst' or args.simulator):
+    print('--ios-cpu x64 is only for Mac Catalyst. Use --simulator-cpu for a simulator.')
+    valid = False
 
   if not valid:
     sys.exit(-1)

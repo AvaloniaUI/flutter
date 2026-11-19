@@ -23,7 +23,10 @@ config("compiler") {
   }
 
   # OS and deployment target.
-  if (is_ios) {
+  if (is_ios && ios_target_platform == "tvos") {
+    _triplet_os = "apple-tvos"
+    _deployment_target = tvos_deployment_target
+  } else if (is_ios) {
     _triplet_os = "apple-ios"
     _deployment_target = ios_deployment_target
   } else if (is_mac) {
@@ -50,6 +53,9 @@ config("compiler") {
 
   _target_triple =
       "$darwin_target_arch-$_triplet_os$_deployment_target$darwin_target_sim"
+  if (is_ios && ios_target_platform == "maccatalyst") {
+    _target_triple += "-macabi"
+  }
 
   swiftflags = [
     "-sdk",

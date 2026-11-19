@@ -51,6 +51,18 @@ declare_args() {
   # Version of iOS that we're targeting.
   ios_deployment_target = "15.0"
 
+  # The Apple platform of an iOS build (is_ios): "ios", "tvos" (Apple TV, with
+  # use_ios_simulator for its simulator) or "maccatalyst" (the macOS SDK with
+  # the macabi target; never a simulator). Mac Catalyst uses
+  # ios_deployment_target as its iOS version.
+  ios_target_platform = "ios"
+
+  # Version of tvOS that we're targeting (ios_target_platform "tvos"). The
+  # clang of //flutter/buildtools has no tvOS compiler-rt, so @available checks
+  # for newer tvOS versions would not link (__isPlatformVersionAtLeast); tvOS
+  # 16.0 covers the APIs the engine uses.
+  tvos_deployment_target = "16.0"
+
   # The path to the iOS device platform.
   ios_device_platform_path = ""
 
@@ -135,6 +147,46 @@ if (mac_swift_lib_paths == []) {
 }
 
 if (is_ios) {
+  assert(ios_target_platform == "ios" || ios_target_platform == "tvos" ||
+             ios_target_platform == "maccatalyst",
+         "ios_target_platform must be ios, tvos or maccatalyst")
+  if (ios_target_platform == "maccatalyst") {
+    assert(!use_ios_simulator, "Mac Catalyst has no simulator")
+    if (ios_sdk_path == "") {
+      ios_sdk_path = mac_sdk_path
+    }
+    if (ios_platform_path == "") {
+      ios_platform_path = mac_platform_path
+    }
+  } else if (ios_target_platform == "tvos" &&
+             (ios_platform_path == "" || ios_sdk_path == "")) {
+    _tvos_args = [ "--print-paths" ]
+    if (use_rbe && create_xcode_symlinks) {
+      _tvos_args += [
+        "--symlink",
+        rebase_path("//flutter/prebuilts"),
+      ]
+    }
+    if (use_ios_simulator) {
+      _tvos_result = exec_script(rebase_path("//build/mac/darwin_sdk.py"),
+                                 _tvos_args + [
+                                       "--sdk",
+                                       "appletvsimulator",
+                                     ],
+                                 "scope")
+      ios_platform_path = _tvos_result.appletvsimulator_platform_path
+      ios_sdk_path = _tvos_result.appletvsimulator_sdk_path
+    } else {
+      _tvos_result = exec_script(rebase_path("//build/mac/darwin_sdk.py"),
+                                 _tvos_args + [
+                                       "--sdk",
+                                       "appletvos",
+                                     ],
+                                 "scope")
+      ios_platform_path = _tvos_result.appletvos_platform_path
+      ios_sdk_path = _tvos_result.appletvos_sdk_path
+    }
+  }
   if (ios_platform_path == "" || ios_sdk_path == "") {
     if (use_ios_simulator) {
       if (ios_simulator_platform_path == "") {

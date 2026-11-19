@@ -36,7 +36,7 @@ def main():
   parser.add_argument(
       '--platform',
       required=True,
-      choices=['mac', 'ios', 'ios-simulator'],
+      choices=['mac', 'ios', 'ios-simulator', 'tvos', 'tvos-simulator', 'maccatalyst'],
       help='Select the platform.'
   )
   parser.add_argument(
@@ -65,6 +65,18 @@ def main():
   elif args.platform == 'ios-simulator':
     command += [
         'iphonesimulator',
+    ]
+  elif args.platform == 'tvos':
+    command += [
+        'appletvos',
+    ]
+  elif args.platform == 'tvos-simulator':
+    command += [
+        'appletvsimulator',
+    ]
+  elif args.platform == 'maccatalyst':
+    command += [
+        'macosx',
     ]
   else:
     raise 'Unknown target platform'
@@ -113,6 +125,22 @@ def main():
     command += [
         '--std=ios-metal%s' % args.metal_version,
         '-miphonesimulator-version-min=11.0',
+    ]
+  elif args.platform == 'tvos':
+    command += [
+        '--std=ios-metal%s' % args.metal_version,
+        '-mtvos-version-min=16.0',
+    ]
+  elif args.platform == 'tvos-simulator':
+    command += [
+        '--std=ios-metal%s' % args.metal_version,
+        '-mtvos-simulator-version-min=16.0',
+    ]
+  elif args.platform == 'maccatalyst':
+    command += [
+        '--std=ios-metal%s' % args.metal_version,
+        '-target',
+        'air64-apple-ios15.0-macabi',
     ]
   else:
     raise 'Unknown target platform'

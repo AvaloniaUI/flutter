@@ -11,13 +11,13 @@
 #include "txt/platform.h"
 #include "txt/platform_mac.h"
 
-#if TARGET_OS_EMBEDDED || TARGET_OS_SIMULATOR
+#if TARGET_OS_IPHONE
 #include <UIKit/UIKit.h>
 #define FONT_CLASS UIFont
-#else  // TARGET_OS_EMBEDDED
+#else  // TARGET_OS_IPHONE
 #include <AppKit/AppKit.h>
 #define FONT_CLASS NSFont
-#endif  // TARGET_OS_EMBEDDED
+#endif  // TARGET_OS_IPHONE
 
 // Apple system font larger than size 29 returns SFProDisplay typeface.
 static const CGFloat kSFProDisplayBreakPoint = 29;

@@ -46,7 +46,7 @@ def parse_arguments():
   )
   parser.add_argument(
     '--sdk',
-    choices=SDKS,
+    choices=SDKS + ['appletvos', 'appletvsimulator'],
     help='Which SDK to find.',
   )
   return parser.parse_args()

@@ -23,7 +23,7 @@ id<MTLBuffer> DeviceBufferMTL::GetMTLBuffer() const {
 }
 
 uint8_t* DeviceBufferMTL::OnGetContents() const {
-#if !FML_OS_IOS
+#if !FML_OS_IOS || TARGET_OS_MACCATALYST
   if (storage_mode_ != MTLStorageModeShared &&
       storage_mode_ != MTLStorageModeManaged) {
     return nullptr;
@@ -53,7 +53,7 @@ uint8_t* DeviceBufferMTL::OnGetContents() const {
 // MTLStorageModeManaged is never present on always returns false on iOS. But
 // the compiler is mad that `didModifyRange:` appears in a TU meant for iOS. So,
 // just compile it away.
-#if !FML_OS_IOS
+#if !FML_OS_IOS || TARGET_OS_MACCATALYST
   if (storage_mode_ == MTLStorageModeManaged) {
     [buffer_ didModifyRange:NSMakeRange(offset, source_range.length)];
   }
@@ -63,7 +63,7 @@ uint8_t* DeviceBufferMTL::OnGetContents() const {
 }
 
 void DeviceBufferMTL::Flush(std::optional<Range> range) const {
-#if !FML_OS_IOS
+#if !FML_OS_IOS || TARGET_OS_MACCATALYST
   auto flush_range = range.value_or(Range{0, GetDeviceBufferDescriptor().size});
   if (storage_mode_ == MTLStorageModeManaged) {
     [buffer_
