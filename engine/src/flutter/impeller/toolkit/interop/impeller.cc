@@ -19,6 +19,7 @@
 #include "impeller/toolkit/interop/formats.h"
 #include "impeller/toolkit/interop/fragment_program.h"
 #include "impeller/toolkit/interop/glyph_info.h"
+#include "impeller/toolkit/interop/glyph_run.h"
 #include "impeller/toolkit/interop/image_filter.h"
 #include "impeller/toolkit/interop/line_metrics.h"
 #include "impeller/toolkit/interop/mask_filter.h"
@@ -31,6 +32,7 @@
 #include "impeller/toolkit/interop/path_builder.h"
 #include "impeller/toolkit/interop/surface.h"
 #include "impeller/toolkit/interop/texture.h"
+#include "impeller/toolkit/interop/typeface.h"
 #include "impeller/toolkit/interop/typography_context.h"
 
 #if IMPELLER_ENABLE_OPENGLES
@@ -65,6 +67,7 @@ DEFINE_PEER_GETTER(DisplayList, ImpellerDisplayList);
 DEFINE_PEER_GETTER(DisplayListBuilder, ImpellerDisplayListBuilder);
 DEFINE_PEER_GETTER(FragmentProgram, ImpellerFragmentProgram);
 DEFINE_PEER_GETTER(GlyphInfo, ImpellerGlyphInfo);
+DEFINE_PEER_GETTER(GlyphRun, ImpellerGlyphRun);
 DEFINE_PEER_GETTER(ImageFilter, ImpellerImageFilter);
 DEFINE_PEER_GETTER(LineMetrics, ImpellerLineMetrics);
 DEFINE_PEER_GETTER(MaskFilter, ImpellerMaskFilter);
@@ -79,6 +82,7 @@ DEFINE_PEER_GETTER(Surface, ImpellerSurface);
 DEFINE_PEER_GETTER(SwapchainVK, ImpellerVulkanSwapchain);
 #endif  // IMPELLER_ENABLE_VULKAN
 DEFINE_PEER_GETTER(Texture, ImpellerTexture);
+DEFINE_PEER_GETTER(Typeface, ImpellerTypeface);
 DEFINE_PEER_GETTER(TypographyContext, ImpellerTypographyContext);
 
 static std::string GetVersionAsString(uint32_t version) {
@@ -1254,6 +1258,57 @@ void ImpellerDisplayListBuilderDrawParagraph(ImpellerDisplayListBuilder builder,
 }
 
 IMPELLER_EXTERN_C
+void ImpellerDisplayListBuilderDrawGlyphRun(ImpellerDisplayListBuilder builder,
+                                            ImpellerGlyphRun glyph_run,
+                                            const ImpellerPoint* point,
+                                            ImpellerPaint paint) {
+  GetPeer(builder)->DrawGlyphRun(*GetPeer(glyph_run), ToImpellerType(*point),
+                                 *GetPeer(paint));
+}
+
+IMPELLER_EXTERN_C
+void ImpellerTypefaceRetain(ImpellerTypeface typeface) {
+  ObjectBase::SafeRetain(typeface);
+}
+
+IMPELLER_EXTERN_C
+void ImpellerTypefaceRelease(ImpellerTypeface typeface) {
+  ObjectBase::SafeRelease(typeface);
+}
+
+IMPELLER_EXTERN_C
+ImpellerGlyphRun ImpellerGlyphRunNew(ImpellerTypeface typeface,
+                                     float size,
+                                     const ImpellerGlyphRunOptions* options,
+                                     uint32_t glyph_count,
+                                     const uint16_t* glyphs,
+                                     const ImpellerPoint* positions) {
+  ImpellerGlyphRunOptions run_options = {};
+  if (options) {
+    run_options = *options;
+  }
+  return GlyphRun::Make(*GetPeer(typeface), size, run_options, glyph_count,
+                        glyphs, positions)
+      .Leak();
+}
+
+IMPELLER_EXTERN_C
+void ImpellerGlyphRunRetain(ImpellerGlyphRun glyph_run) {
+  ObjectBase::SafeRetain(glyph_run);
+}
+
+IMPELLER_EXTERN_C
+void ImpellerGlyphRunRelease(ImpellerGlyphRun glyph_run) {
+  ObjectBase::SafeRelease(glyph_run);
+}
+
+IMPELLER_EXTERN_C
+void ImpellerGlyphRunGetBounds(ImpellerGlyphRun glyph_run,
+                               ImpellerRect* out_bounds) {
+  *out_bounds = GetPeer(glyph_run)->GetBounds();
+}
+
+IMPELLER_EXTERN_C
 void ImpellerDisplayListBuilderDrawShadow(ImpellerDisplayListBuilder builder,
                                           ImpellerPath path,
                                           const ImpellerColor* color,
@@ -1592,6 +1647,16 @@ static std::shared_ptr<fml::Mapping> MakeCopyableMapping(
 
   return std::make_shared<fml::MallocMapping>(
       fml::MallocMapping::Copy(data->data, data->length));
+}
+
+IMPELLER_EXTERN_C
+ImpellerTypeface ImpellerTypefaceNew(const ImpellerMapping* contents,
+                                     void* contents_on_release_user_data,
+                                     uint32_t face_index) {
+  return Typeface::Make(
+             MakeCopyableMapping(contents, contents_on_release_user_data),
+             face_index)
+      .Leak();
 }
 
 IMPELLER_EXTERN_C

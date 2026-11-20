@@ -11,6 +11,7 @@
 #include "impeller/geometry/size.h"
 #include "impeller/toolkit/interop/dl.h"
 #include "impeller/toolkit/interop/formats.h"
+#include "impeller/toolkit/interop/glyph_run.h"
 #include "impeller/toolkit/interop/image_filter.h"
 #include "impeller/toolkit/interop/impeller.h"
 #include "impeller/toolkit/interop/object.h"
@@ -109,6 +110,8 @@ class DisplayListBuilder final
   void DrawDisplayList(const DisplayList& dl, Scalar opacity);
 
   void DrawParagraph(const Paragraph& paragraph, Point point);
+
+  void DrawGlyphRun(const GlyphRun& glyph_run, Point point, const Paint& paint);
 
   void DrawShadow(const Path& path,
                   const flutter::DlColor& color,

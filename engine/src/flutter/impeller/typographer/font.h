@@ -42,6 +42,24 @@ class Font : public Comparable<Font> {
   ///             The coordinate system of a font has its origin at (0, 0) on
   ///             the baseline with an upper-left-origin coordinate system.
   ///
+  //----------------------------------------------------------------------------
+  /// How glyph edges are rasterized into the glyph atlas.
+  ///
+  enum class Edging : uint8_t {
+    kAntiAlias,
+    kAlias,
+  };
+
+  //----------------------------------------------------------------------------
+  /// How strongly glyph outlines are fitted to the pixel grid.
+  ///
+  enum class Hinting : uint8_t {
+    kNone,
+    kSlight,
+    kNormal,
+    kFull,
+  };
+
   struct Metrics {
     //--------------------------------------------------------------------------
     /// The point size of the font.
@@ -50,10 +68,13 @@ class Font : public Comparable<Font> {
     bool embolden = false;
     Scalar skewX = 0.0f;
     Scalar scaleX = 1.0f;
+    Edging edging = Edging::kAntiAlias;
+    Hinting hinting = Hinting::kSlight;
 
     constexpr bool operator==(const Metrics& o) const {
       return point_size == o.point_size && embolden == o.embolden &&
-             skewX == o.skewX && scaleX == o.scaleX;
+             skewX == o.skewX && scaleX == o.scaleX && edging == o.edging &&
+             hinting == o.hinting;
     }
   };
 
@@ -94,7 +115,9 @@ class Font : public Comparable<Font> {
 template <>
 struct std::hash<impeller::Font::Metrics> {
   constexpr std::size_t operator()(const impeller::Font::Metrics& m) const {
-    return fml::HashCombine(m.point_size, m.skewX, m.scaleX);
+    return fml::HashCombine(m.point_size, m.skewX, m.scaleX,
+                            static_cast<uint8_t>(m.edging),
+                            static_cast<uint8_t>(m.hinting));
   }
 };
 

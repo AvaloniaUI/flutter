@@ -261,6 +261,27 @@ IMPELLER_DEFINE_HANDLE(ImpellerLineMetrics);
 IMPELLER_DEFINE_HANDLE(ImpellerGlyphInfo);
 
 //------------------------------------------------------------------------------
+/// A font face loaded from font data, for drawing glyphs that the caller has
+/// already shaped and positioned.
+///
+/// Typefaces are immutable and thread-safe.
+///
+/// @see      `ImpellerGlyphRun`
+///
+IMPELLER_DEFINE_HANDLE(ImpellerTypeface);
+
+//------------------------------------------------------------------------------
+/// An immutable run of positioned glyphs of one typeface at one size.
+///
+/// Glyph runs are drawn through the glyph atlas, like the glyphs of
+/// paragraphs. Building one is more expensive than drawing it, so runs that
+/// are drawn repeatedly should be kept.
+///
+/// @see      `ImpellerDisplayListBuilderDrawGlyphRun`
+///
+IMPELLER_DEFINE_HANDLE(ImpellerGlyphRun);
+
+//------------------------------------------------------------------------------
 /// Represents a two-dimensional path that is immutable and graphics context
 /// agnostic.
 ///
@@ -467,6 +488,18 @@ typedef enum ImpellerFontStyle {
   kImpellerFontStyleItalic,
 } ImpellerFontStyle;
 
+typedef enum ImpellerFontEdging {
+  kImpellerFontEdgingAntiAlias,
+  kImpellerFontEdgingAlias,
+} ImpellerFontEdging;
+
+typedef enum ImpellerFontHinting {
+  kImpellerFontHintingNone,
+  kImpellerFontHintingSlight,
+  kImpellerFontHintingNormal,
+  kImpellerFontHintingFull,
+} ImpellerFontHinting;
+
 typedef enum ImpellerTextAlignment {
   kImpellerTextAlignmentLeft,
   kImpellerTextAlignmentRight,
@@ -628,6 +661,20 @@ typedef struct ImpellerMapping {
   uint64_t length;
   ImpellerCallback IMPELLER_NULLABLE on_release;
 } ImpellerMapping;
+
+//------------------------------------------------------------------------------
+/// How the glyphs of a glyph run are rasterized. A zero-initialized struct
+/// selects anti-aliased edging without hinting, emboldening or skew.
+///
+typedef struct ImpellerGlyphRunOptions {
+  /// The horizontal skew applied to the glyphs, as for synthetic oblique
+  /// styles. Negative values lean the glyphs to the right.
+  float skew_x;
+  ImpellerFontEdging edging;
+  ImpellerFontHinting hinting;
+  /// Whether the glyph outlines are thickened, as for synthetic bold styles.
+  bool embolden;
+} ImpellerGlyphRunOptions;
 
 typedef struct ImpellerContextVulkanSettings {
   void* IMPELLER_NULLABLE user_data;
@@ -2261,6 +2308,26 @@ void ImpellerDisplayListBuilderDrawParagraph(
     const ImpellerPoint* IMPELLER_NONNULL point);
 
 //------------------------------------------------------------------------------
+/// @brief      Draw a glyph run with its origin at the specified point.
+///
+///             The glyphs are drawn through the glyph atlas when the paint is
+///             a solid color fill. Paints with a color source, and strokes
+///             wider than 4, draw the outlines of the glyphs instead, except
+///             for color glyphs such as emoji.
+///
+/// @param[in]  builder    The builder.
+/// @param[in]  glyph_run  The glyph run.
+/// @param[in]  point      The point that the glyph positions are relative to.
+/// @param[in]  paint      The paint.
+///
+IMPELLER_EXPORT
+void ImpellerDisplayListBuilderDrawGlyphRun(
+    ImpellerDisplayListBuilder IMPELLER_NONNULL builder,
+    ImpellerGlyphRun IMPELLER_NONNULL glyph_run,
+    const ImpellerPoint* IMPELLER_NONNULL point,
+    ImpellerPaint IMPELLER_NONNULL paint);
+
+//------------------------------------------------------------------------------
 /// @brief      Draw a shadow for a Path given a material elevation. If the
 ///             occluding object is not opaque, additional hints (via the
 ///             `occluder_is_transparent` argument) must be provided to render
@@ -2402,6 +2469,105 @@ bool ImpellerTypographyContextRegisterFont(
     const ImpellerMapping* IMPELLER_NONNULL contents,
     void* IMPELLER_NULLABLE contents_on_release_user_data,
     const char* IMPELLER_NULLABLE family_name_alias);
+
+//------------------------------------------------------------------------------
+// Typefaces
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+/// @brief      Create a typeface from font data (TrueType, OpenType, or a
+///             collection of them).
+///
+///             If the mapping has a release callback, the typeface reads the
+///             contents in place and calls it once they are no longer needed,
+///             which may be immediately if creation fails. Without one, the
+///             contents are copied.
+///
+/// @param[in]  contents                       The font data.
+/// @param[in]  contents_on_release_user_data  The user data baton to be passed
+///                                            to the contents release callback.
+/// @param[in]  face_index                     The index of the face in a font
+///                                            collection, or 0.
+///
+/// @return     The typeface if the font data could be read, NULL otherwise.
+///
+IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerTypeface IMPELLER_NULLABLE
+ImpellerTypefaceNew(const ImpellerMapping* IMPELLER_NONNULL contents,
+                    void* IMPELLER_NULLABLE contents_on_release_user_data,
+                    uint32_t face_index);
+
+//------------------------------------------------------------------------------
+/// @brief      Retain a strong reference to the object. The object can be NULL
+///             in which case this method is a no-op.
+///
+/// @param[in]  typeface  The typeface.
+///
+IMPELLER_EXPORT
+void ImpellerTypefaceRetain(ImpellerTypeface IMPELLER_NULLABLE typeface);
+
+//------------------------------------------------------------------------------
+/// @brief      Release a previously retained reference to the object. The
+///             object can be NULL in which case this method is a no-op.
+///
+/// @param[in]  typeface  The typeface.
+///
+IMPELLER_EXPORT
+void ImpellerTypefaceRelease(ImpellerTypeface IMPELLER_NULLABLE typeface);
+
+//------------------------------------------------------------------------------
+// Glyph Runs
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+/// @brief      Create a run of positioned glyphs.
+///
+/// @param[in]  typeface     The typeface the glyph indices refer to.
+/// @param[in]  size         The font size.
+/// @param[in]  options      How the glyphs are rasterized, or NULL for the
+///                          defaults of a zero-initialized struct.
+/// @param[in]  glyph_count  The number of glyphs. Must be greater than 0.
+/// @param[in]  glyphs       The glyph indices.
+/// @param[in]  positions    The baseline origin of each glyph, relative to
+///                          the point the run is drawn at.
+///
+/// @return     The glyph run, or NULL if it could not be created.
+///
+IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerGlyphRun IMPELLER_NULLABLE
+ImpellerGlyphRunNew(ImpellerTypeface IMPELLER_NONNULL typeface,
+                    float size,
+                    const ImpellerGlyphRunOptions* IMPELLER_NULLABLE options,
+                    uint32_t glyph_count,
+                    const uint16_t* IMPELLER_NONNULL glyphs,
+                    const ImpellerPoint* IMPELLER_NONNULL positions);
+
+//------------------------------------------------------------------------------
+/// @brief      Retain a strong reference to the object. The object can be NULL
+///             in which case this method is a no-op.
+///
+/// @param[in]  glyph_run  The glyph run.
+///
+IMPELLER_EXPORT
+void ImpellerGlyphRunRetain(ImpellerGlyphRun IMPELLER_NULLABLE glyph_run);
+
+//------------------------------------------------------------------------------
+/// @brief      Release a previously retained reference to the object. The
+///             object can be NULL in which case this method is a no-op.
+///
+/// @param[in]  glyph_run  The glyph run.
+///
+IMPELLER_EXPORT
+void ImpellerGlyphRunRelease(ImpellerGlyphRun IMPELLER_NULLABLE glyph_run);
+
+//------------------------------------------------------------------------------
+/// @brief      Get the bounds of the glyphs of a run, relative to the point
+///             the run is drawn at. The bounds are conservative.
+///
+/// @param[in]  glyph_run    The glyph run.
+/// @param[out] out_bounds   The bounds.
+///
+IMPELLER_EXPORT
+void ImpellerGlyphRunGetBounds(ImpellerGlyphRun IMPELLER_NONNULL glyph_run,
+                               ImpellerRect* IMPELLER_NONNULL out_bounds);
 
 //------------------------------------------------------------------------------
 // Paragraph Style

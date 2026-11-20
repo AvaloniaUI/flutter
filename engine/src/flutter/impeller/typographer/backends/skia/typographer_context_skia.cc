@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -40,6 +41,7 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkFont.h"
 #include "third_party/skia/include/core/SkPaint.h"
+#include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkSize.h"
 #include "third_party/skia/include/core/SkSurface.h"
 
@@ -250,6 +252,30 @@ static Point SubpixelPositionToPoint(SubpixelPosition pos) {
   return Point((pos & 0xff) / 4.f, (pos >> 2 & 0xff) / 4.f);
 }
 
+static SkFontHinting ToSkiaHinting(Font::Hinting hinting) {
+  switch (hinting) {
+    case Font::Hinting::kNone:
+      return SkFontHinting::kNone;
+    case Font::Hinting::kSlight:
+      return SkFontHinting::kSlight;
+    case Font::Hinting::kNormal:
+      return SkFontHinting::kNormal;
+    case Font::Hinting::kFull:
+      return SkFontHinting::kFull;
+  }
+  FML_UNREACHABLE();
+}
+
+/// Applies the font's edging and hinting. Aliased glyphs are not positioned
+/// at subpixel offsets.
+static void ApplyRasterization(SkFont& sk_font, const Font::Metrics& metrics) {
+  const bool alias = metrics.edging == Font::Edging::kAlias;
+  sk_font.setEdging(alias ? SkFont::Edging::kAlias
+                          : SkFont::Edging::kAntiAlias);
+  sk_font.setHinting(ToSkiaHinting(metrics.hinting));
+  sk_font.setSubpixel(!alias);
+}
+
 static void DrawGlyph(SkCanvas* canvas,
                       const SkPoint position,
                       const ScaledFont& scaled_font,
@@ -262,10 +288,8 @@ static void DrawGlyph(SkCanvas* canvas,
   SkFont sk_font(
       TypefaceSkia::Cast(*scaled_font.font.GetTypeface()).GetSkiaTypeface(),
       metrics.point_size, metrics.scaleX, metrics.skewX);
-  sk_font.setEdging(SkFont::Edging::kAntiAlias);
-  sk_font.setHinting(SkFontHinting::kSlight);
+  ApplyRasterization(sk_font, metrics);
   sk_font.setEmbolden(metrics.embolden);
-  sk_font.setSubpixel(true);
   sk_font.setSize(sk_font.getSize() * static_cast<Scalar>(scaled_font.scale));
 
   SkColor glyph_color;
@@ -293,6 +317,19 @@ static void DrawGlyph(SkCanvas* canvas,
   canvas->save();
   Point subpixel_offset = SubpixelPositionToPoint(glyph.subpixel_offset);
   canvas->translate(subpixel_offset.x, subpixel_offset.y);
+  // The engine's FreeType has no monochrome rasterizer, so aliased glyphs
+  // are filled from their outlines without anti-aliasing.
+  if (metrics.edging == Font::Edging::kAlias) {
+    if (std::optional<SkPath> path = sk_font.getPath(glyph_id);
+        path.has_value() && !path->isEmpty()) {
+      canvas->translate(position.x() - scaled_bounds.GetLeft(),
+                        position.y() - scaled_bounds.GetTop());
+      glyph_paint.setAntiAlias(false);
+      canvas->drawPath(path.value(), glyph_paint);
+      canvas->restore();
+      return;
+    }
+  }
   // Draw a single glyph in the bounds
   canvas->drawGlyphs({&glyph_id, 1u},  // glyphs
                      {&position, 1u},  // positions
@@ -506,15 +543,13 @@ TypographerContextSkia::CollectNewGlyphs(
       SkFont sk_font(
           TypefaceSkia::Cast(*scaled_font.font.GetTypeface()).GetSkiaTypeface(),
           metrics.point_size, metrics.scaleX, metrics.skewX);
-      sk_font.setEdging(SkFont::Edging::kAntiAlias);
-      sk_font.setHinting(SkFontHinting::kSlight);
+      ApplyRasterization(sk_font, metrics);
       sk_font.setEmbolden(metrics.embolden);
       // Rather than computing the bounds at the requested point size and
       // scaling up the bounds, we scale up the font size and request the
       // bounds. This seems to give more accurate bounds information.
       sk_font.setSize(sk_font.getSize() *
                       static_cast<Scalar>(scaled_font.scale));
-      sk_font.setSubpixel(true);
 
       for (const auto& glyph_position : run.GetGlyphPositions()) {
         SubpixelPosition subpixel = TextFrame::ComputeSubpixelPosition(

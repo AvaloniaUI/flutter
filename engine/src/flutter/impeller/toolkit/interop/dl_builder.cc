@@ -181,6 +181,32 @@ void DisplayListBuilder::DrawParagraph(const Paragraph& paragraph,
   handle->Paint(&builder_, point.x, point.y);
 }
 
+// Text with a color source, or a wide stroke, needs glyph coverage rather
+// than atlas samples; see ParagraphSkia's ShouldRenderAsPath.
+static bool ShouldRenderAsPath(const flutter::DlPaint& paint) {
+  return paint.getColorSource() ||
+         (paint.getDrawStyle() == flutter::DlDrawStyle::kStroke &&
+          paint.getStrokeWidth() > 4);
+}
+
+void DisplayListBuilder::DrawGlyphRun(const GlyphRun& glyph_run,
+                                      Point point,
+                                      const Paint& paint) {
+  const auto& dl_paint = paint.GetPaint();
+  if (ShouldRenderAsPath(dl_paint)) {
+    auto path = glyph_run.GetPath();
+    // Color glyphs have no outlines and are drawn as they are.
+    if (!path.IsEmpty()) {
+      // Offset the path rather than the canvas, so color sources stay in the
+      // canvas's coordinates as they do for text drawn through the atlas.
+      builder_.DrawPath(path.WithOffset(flutter::DlPoint(point.x, point.y)),
+                        dl_paint);
+      return;
+    }
+  }
+  builder_.DrawText(glyph_run.GetText(), point.x, point.y, dl_paint);
+}
+
 void DisplayListBuilder::DrawShadow(const Path& path,
                                     const flutter::DlColor& color,
                                     float elevation,

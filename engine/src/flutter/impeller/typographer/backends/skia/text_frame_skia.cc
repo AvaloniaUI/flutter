@@ -22,7 +22,10 @@
 
 namespace impeller {
 
-static Font ToFont(const SkTextBlobRunIterator& run, AxisAlignment alignment) {
+static Font ToFont(const SkTextBlobRunIterator& run,
+                   AxisAlignment alignment,
+                   Font::Edging edging,
+                   Font::Hinting hinting) {
   auto& font = run.font();
   auto typeface = std::make_shared<TypefaceSkia>(font.refTypeface());
 
@@ -34,6 +37,8 @@ static Font ToFont(const SkTextBlobRunIterator& run, AxisAlignment alignment) {
   metrics.embolden = font.isEmbolden();
   metrics.skewX = font.getSkewX();
   metrics.scaleX = font.getScaleX();
+  metrics.edging = edging;
+  metrics.hinting = hinting;
 
   return Font{std::move(typeface), metrics, alignment};
 }
@@ -44,6 +49,14 @@ static Rect ToRect(const SkRect& rect) {
 
 std::shared_ptr<TextFrame> MakeTextFrameFromTextBlobSkia(
     const sk_sp<SkTextBlob>& blob) {
+  return MakeTextFrameFromTextBlobSkia(blob, Font::Edging::kAntiAlias,
+                                       Font::Hinting::kSlight);
+}
+
+std::shared_ptr<TextFrame> MakeTextFrameFromTextBlobSkia(
+    const sk_sp<SkTextBlob>& blob,
+    Font::Edging edging,
+    Font::Hinting hinting) {
   bool has_color = false;
   std::vector<TextRun> runs;
   for (SkTextBlobRunIterator run(blob.get()); !run.done(); run.next()) {
@@ -77,7 +90,7 @@ std::shared_ptr<TextFrame> MakeTextFrameFromTextBlobSkia(
                                                         point->y(),
                                                     }});
         }
-        TextRun text_run(ToFont(run, alignment), positions);
+        TextRun text_run(ToFont(run, alignment, edging, hinting), positions);
         runs.emplace_back(text_run);
         break;
       }

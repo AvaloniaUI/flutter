@@ -71,6 +71,7 @@ struct Proc {
   PROC(ImpellerDisplayListBuilderCreateDisplayListNew)            \
   PROC(ImpellerDisplayListBuilderDrawDashedLine)                  \
   PROC(ImpellerDisplayListBuilderDrawDisplayList)                 \
+  PROC(ImpellerDisplayListBuilderDrawGlyphRun)                    \
   PROC(ImpellerDisplayListBuilderDrawLine)                        \
   PROC(ImpellerDisplayListBuilderDrawOval)                        \
   PROC(ImpellerDisplayListBuilderDrawPaint)                       \
@@ -110,6 +111,10 @@ struct Proc {
   PROC(ImpellerGlyphInfoIsEllipsis)                               \
   PROC(ImpellerGlyphInfoRelease)                                  \
   PROC(ImpellerGlyphInfoRetain)                                   \
+  PROC(ImpellerGlyphRunGetBounds)                                 \
+  PROC(ImpellerGlyphRunNew)                                       \
+  PROC(ImpellerGlyphRunRelease)                                   \
+  PROC(ImpellerGlyphRunRetain)                                    \
   PROC(ImpellerImageFilterCreateBlurNew)                          \
   PROC(ImpellerImageFilterCreateComposeNew)                       \
   PROC(ImpellerImageFilterCreateDilateNew)                        \
@@ -184,8 +189,8 @@ struct Proc {
   PROC(ImpellerParagraphStyleSetLocale)                           \
   PROC(ImpellerParagraphStyleSetMaxLines)                         \
   PROC(ImpellerParagraphStyleSetTextAlignment)                    \
-  PROC(ImpellerParagraphStyleSetTextDirection)                    \
   PROC(ImpellerParagraphStyleSetTextDecoration)                   \
+  PROC(ImpellerParagraphStyleSetTextDirection)                    \
   PROC(ImpellerPathBuilderAddArc)                                 \
   PROC(ImpellerPathBuilderAddOval)                                \
   PROC(ImpellerPathBuilderAddRect)                                \
@@ -214,6 +219,9 @@ struct Proc {
   PROC(ImpellerTextureGetOpenGLHandle)                            \
   PROC(ImpellerTextureRelease)                                    \
   PROC(ImpellerTextureRetain)                                     \
+  PROC(ImpellerTypefaceNew)                                       \
+  PROC(ImpellerTypefaceRelease)                                   \
+  PROC(ImpellerTypefaceRetain)                                    \
   PROC(ImpellerTypographyContextNew)                              \
   PROC(ImpellerTypographyContextRegisterFont)                     \
   PROC(ImpellerTypographyContextRelease)                          \
@@ -320,6 +328,7 @@ IMPELLER_HPP_DEFINE_TRAITS(ImpellerDisplayList);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerDisplayListBuilder);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerFragmentProgram);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerGlyphInfo);
+IMPELLER_HPP_DEFINE_TRAITS(ImpellerGlyphRun);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerImageFilter);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerLineMetrics);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerMaskFilter);
@@ -331,6 +340,7 @@ IMPELLER_HPP_DEFINE_TRAITS(ImpellerPath);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerPathBuilder);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerSurface);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerTexture);
+IMPELLER_HPP_DEFINE_TRAITS(ImpellerTypeface);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerTypographyContext);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerVulkanSwapchain);
 
@@ -1240,6 +1250,65 @@ class TypographyContext : public Object<ImpellerTypographyContext,
 };
 
 //------------------------------------------------------------------------------
+/// @see      ImpellerTypeface
+///
+class Typeface : public Object<ImpellerTypeface, ImpellerTypefaceTraits> {
+ public:
+  Typeface(ImpellerTypeface typeface, AdoptTag tag) : Object(typeface, tag) {}
+
+  //----------------------------------------------------------------------------
+  /// @see      ImpellerTypefaceNew
+  ///
+  static Typeface WithData(std::unique_ptr<Mapping> mapping,
+                           uint32_t face_index = 0u) {
+    if (!mapping) {
+      return Typeface(nullptr, AdoptTag::kAdopt);
+    }
+    ImpellerMapping c_mapping = {};
+    c_mapping.data = mapping->GetMapping();
+    c_mapping.length = mapping->GetSize();
+    c_mapping.on_release = [](void* user_data) {
+      delete reinterpret_cast<Mapping*>(user_data);
+    };
+    return Typeface(gGlobalProcTable.ImpellerTypefaceNew(
+                        &c_mapping, mapping.release(), face_index),
+                    AdoptTag::kAdopt);
+  }
+};
+
+//------------------------------------------------------------------------------
+/// @see      ImpellerGlyphRun
+///
+class GlyphRun : public Object<ImpellerGlyphRun, ImpellerGlyphRunTraits> {
+ public:
+  GlyphRun(ImpellerGlyphRun run, AdoptTag tag) : Object(run, tag) {}
+
+  //----------------------------------------------------------------------------
+  /// @see      ImpellerGlyphRunNew
+  ///
+  static GlyphRun Make(const Typeface& typeface,
+                       float size,
+                       const ImpellerGlyphRunOptions* options,
+                       uint32_t glyph_count,
+                       const uint16_t* glyphs,
+                       const ImpellerPoint* positions) {
+    return GlyphRun(
+        gGlobalProcTable.ImpellerGlyphRunNew(typeface.Get(), size, options,
+                                             glyph_count, glyphs, positions),
+        AdoptTag::kAdopt);
+  }
+
+  //----------------------------------------------------------------------------
+  /// @see      ImpellerGlyphRunGetBounds
+  ///
+  ImpellerRect GetBounds() const {
+    ImpellerRect bounds = {};
+    gGlobalProcTable.ImpellerGlyphRunGetBounds(Get(), &bounds);
+    return bounds;
+  }
+};
+
+//------------------------------------------------------------------------------
 /// @see      ImpellerParagraphBuilder
 ///
 class ParagraphBuilder
@@ -1655,6 +1724,17 @@ class DisplayListBuilder : public Object<ImpellerDisplayListBuilder,
                                     const ImpellerPoint& point) {
     gGlobalProcTable.ImpellerDisplayListBuilderDrawParagraph(
         Get(), paragraph.Get(), &point);
+    return *this;
+  }
+
+  //----------------------------------------------------------------------------
+  /// @see      ImpellerDisplayListBuilderDrawGlyphRun
+  ///
+  DisplayListBuilder& DrawGlyphRun(const GlyphRun& glyph_run,
+                                   const ImpellerPoint& point,
+                                   const Paint& paint) {
+    gGlobalProcTable.ImpellerDisplayListBuilderDrawGlyphRun(
+        Get(), glyph_run.Get(), &point, paint.Get());
     return *this;
   }
 
