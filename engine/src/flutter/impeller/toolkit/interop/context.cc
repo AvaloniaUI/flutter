@@ -13,6 +13,10 @@ Context::Context(std::shared_ptr<impeller::Context> context)
 
 Context::~Context() = default;
 
+void Context::SetOnResourcesReleased(std::function<void()> callback) {
+  on_resources_released_.callback = std::move(callback);
+}
+
 bool Context::IsValid() const {
   return context_.IsValid();
 }

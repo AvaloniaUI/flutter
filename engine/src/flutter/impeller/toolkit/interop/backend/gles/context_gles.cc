@@ -59,7 +59,22 @@ ScopedObject<Context> ContextGLES::Create(
 
 ContextGLES::ContextGLES(std::shared_ptr<impeller::Context> context,
                          std::shared_ptr<ReactorWorkerGLES> worker)
-    : Context(std::move(context)), worker_(std::move(worker)) {}
+    : Context(std::move(context)), worker_(std::move(worker)) {
+  if (!IsValid()) {
+    return;
+  }
+  // The reactor deletes GL objects only while a worker lets it react. The
+  // callback keeps the worker alive until the Aiks context and, unless other
+  // objects still hold it, the reactor are destroyed, and then deletes the GL
+  // objects that the released resources handed back to a surviving reactor.
+  std::weak_ptr<ReactorGLES> reactor =
+      impeller::ContextGLES::Cast(*GetContext()).GetReactor();
+  SetOnResourcesReleased([worker = worker_, reactor]() {
+    if (auto live_reactor = reactor.lock()) {
+      [[maybe_unused]] auto reacted = live_reactor->React();
+    }
+  });
+}
 
 ContextGLES::~ContextGLES() = default;
 

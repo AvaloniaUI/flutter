@@ -5,6 +5,8 @@
 #ifndef FLUTTER_IMPELLER_TOOLKIT_INTEROP_CONTEXT_H_
 #define FLUTTER_IMPELLER_TOOLKIT_INTEROP_CONTEXT_H_
 
+#include <functional>
+
 #include "impeller/display_list/aiks_context.h"
 #include "impeller/renderer/context.h"
 #include "impeller/toolkit/interop/impeller.h"
@@ -38,7 +40,25 @@ class Context
  protected:
   explicit Context(std::shared_ptr<impeller::Context> context);
 
+  //----------------------------------------------------------------------------
+  /// @brief      Sets a function to run once the context's resources are
+  ///             released, after the Aiks context is destroyed.
+  ///
+  void SetOnResourcesReleased(std::function<void()> callback);
+
  private:
+  // Declared before the Aiks context so that it is destroyed after it.
+  struct OnResourcesReleased {
+    std::function<void()> callback;
+
+    ~OnResourcesReleased() {
+      if (callback) {
+        callback();
+      }
+    }
+  };
+
+  OnResourcesReleased on_resources_released_;
   impeller::AiksContext context_;
 };
 
