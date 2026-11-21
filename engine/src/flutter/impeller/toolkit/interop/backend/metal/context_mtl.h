@@ -5,6 +5,7 @@
 #ifndef FLUTTER_IMPELLER_TOOLKIT_INTEROP_BACKEND_METAL_CONTEXT_MTL_H_
 #define FLUTTER_IMPELLER_TOOLKIT_INTEROP_BACKEND_METAL_CONTEXT_MTL_H_
 
+#include "impeller/base/flags.h"
 #include "impeller/renderer/backend/metal/swapchain_transients_mtl.h"
 #include "impeller/toolkit/interop/context.h"
 
@@ -12,7 +13,7 @@ namespace impeller::interop {
 
 class ContextMTL final : public Context {
  public:
-  static ScopedObject<Context> Create();
+  static ScopedObject<Context> Create(const Flags& flags = {});
 
   static ScopedObject<Context> Create(
       const std::shared_ptr<impeller::Context>& context);

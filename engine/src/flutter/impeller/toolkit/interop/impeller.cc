@@ -15,6 +15,7 @@
 #include "impeller/toolkit/interop/color_filter.h"
 #include "impeller/toolkit/interop/color_source.h"
 #include "impeller/toolkit/interop/context.h"
+#include "impeller/toolkit/interop/context_options.h"
 #include "impeller/toolkit/interop/dl_builder.h"
 #include "impeller/toolkit/interop/formats.h"
 #include "impeller/toolkit/interop/fragment_program.h"
@@ -63,6 +64,7 @@ namespace impeller::interop {
 DEFINE_PEER_GETTER(ColorFilter, ImpellerColorFilter);
 DEFINE_PEER_GETTER(ColorSource, ImpellerColorSource);
 DEFINE_PEER_GETTER(Context, ImpellerContext);
+DEFINE_PEER_GETTER(ContextOptions, ImpellerContextOptions);
 DEFINE_PEER_GETTER(DisplayList, ImpellerDisplayList);
 DEFINE_PEER_GETTER(DisplayListBuilder, ImpellerDisplayListBuilder);
 DEFINE_PEER_GETTER(FragmentProgram, ImpellerFragmentProgram);
@@ -111,10 +113,53 @@ static bool CheckVersion(uint32_t version) {
 }
 
 IMPELLER_EXTERN_C
+ImpellerContextOptions ImpellerContextOptionsNew() {
+  return Create<ContextOptions>().Leak();
+}
+
+IMPELLER_EXTERN_C
+void ImpellerContextOptionsRetain(ImpellerContextOptions options) {
+  ObjectBase::SafeRetain(options);
+}
+
+IMPELLER_EXTERN_C
+void ImpellerContextOptionsRelease(ImpellerContextOptions options) {
+  ObjectBase::SafeRelease(options);
+}
+
+IMPELLER_EXTERN_C
+void ImpellerContextOptionsSetUseSDFs(ImpellerContextOptions options,
+                                      bool use_sdfs) {
+  GetPeer(options)->SetUseSDFs(use_sdfs);
+}
+
+IMPELLER_EXTERN_C
+void ImpellerContextOptionsSetTopLeftDefaultFramebufferOrigin(
+    ImpellerContextOptions options,
+    bool top_left) {
+  GetPeer(options)->SetTopLeftDefaultFramebufferOrigin(top_left);
+}
+
+static Flags GetFlags(ImpellerContextOptions options) {
+  return options ? GetPeer(options)->GetFlags() : Flags{};
+}
+
+IMPELLER_EXTERN_C
 ImpellerContext ImpellerContextCreateOpenGLESNew(
     uint32_t version,
     ImpellerProcAddressCallback gl_proc_address_callback,
     void* gl_proc_address_callback_user_data) {
+  return ImpellerContextCreateOpenGLESWithOptionsNew(
+      version, gl_proc_address_callback, gl_proc_address_callback_user_data,
+      nullptr);
+}
+
+IMPELLER_EXTERN_C
+ImpellerContext ImpellerContextCreateOpenGLESWithOptionsNew(
+    uint32_t version,
+    ImpellerProcAddressCallback gl_proc_address_callback,
+    void* gl_proc_address_callback_user_data,
+    ImpellerContextOptions options) {
   if (!CheckVersion(version)) {
     return nullptr;
   }
@@ -124,7 +169,8 @@ ImpellerContext ImpellerContextCreateOpenGLESNew(
        gl_proc_address_callback_user_data](const char* proc_name) -> void* {
         return gl_proc_address_callback(proc_name,
                                         gl_proc_address_callback_user_data);
-      });
+      },
+      GetFlags(options));
   if (!context || !context->IsValid()) {
     VALIDATION_LOG << "Could not create valid context.";
     return nullptr;
@@ -138,11 +184,17 @@ ImpellerContext ImpellerContextCreateOpenGLESNew(
 
 IMPELLER_EXTERN_C ImpellerContext
 ImpellerContextCreateMetalNew(uint32_t version) {
+  return ImpellerContextCreateMetalWithOptionsNew(version, nullptr);
+}
+
+IMPELLER_EXTERN_C ImpellerContext
+ImpellerContextCreateMetalWithOptionsNew(uint32_t version,
+                                         ImpellerContextOptions options) {
   if (!CheckVersion(version)) {
     return nullptr;
   }
 #if IMPELLER_ENABLE_METAL
-  auto context = ContextMTL::Create();
+  auto context = ContextMTL::Create(GetFlags(options));
   if (!context || !context->IsValid()) {
     VALIDATION_LOG << "Could not create valid context.";
     return nullptr;
@@ -157,11 +209,19 @@ ImpellerContextCreateMetalNew(uint32_t version) {
 IMPELLER_EXTERN_C ImpellerContext
 ImpellerContextCreateVulkanNew(uint32_t version,
                                const ImpellerContextVulkanSettings* settings) {
+  return ImpellerContextCreateVulkanWithOptionsNew(version, settings, nullptr);
+}
+
+IMPELLER_EXTERN_C ImpellerContext ImpellerContextCreateVulkanWithOptionsNew(
+    uint32_t version,
+    const ImpellerContextVulkanSettings* settings,
+    ImpellerContextOptions options) {
   if (!CheckVersion(version)) {
     return nullptr;
   }
 #if IMPELLER_ENABLE_VULKAN
-  auto context = ContextVK::Create(ContextVK::Settings(*settings));
+  auto context =
+      ContextVK::Create(ContextVK::Settings(*settings), GetFlags(options));
   if (!context || !context->IsValid()) {
     VALIDATION_LOG << "Could not create valid context.";
     return nullptr;

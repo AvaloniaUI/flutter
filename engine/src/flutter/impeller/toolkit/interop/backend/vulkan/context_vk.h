@@ -5,6 +5,7 @@
 #ifndef FLUTTER_IMPELLER_TOOLKIT_INTEROP_BACKEND_VULKAN_CONTEXT_VK_H_
 #define FLUTTER_IMPELLER_TOOLKIT_INTEROP_BACKEND_VULKAN_CONTEXT_VK_H_
 
+#include "impeller/base/flags.h"
 #include "impeller/renderer/backend/vulkan/vk.h"
 #include "impeller/toolkit/interop/context.h"
 #include "impeller/toolkit/interop/impeller.h"
@@ -24,7 +25,8 @@ class ContextVK final : public Context {
     bool IsValid() const;
   };
 
-  static ScopedObject<Context> Create(const Settings& settings);
+  static ScopedObject<Context> Create(const Settings& settings,
+                                      const Flags& flags = {});
 
   static ScopedObject<Context> Create(
       std::shared_ptr<impeller::Context> context);

@@ -41,7 +41,8 @@ ContextVKGetInstanceProcAddress(VkInstance instance, const char* proc_name) {
   return nullptr;
 }
 
-ScopedObject<Context> ContextVK::Create(const Settings& settings) {
+ScopedObject<Context> ContextVK::Create(const Settings& settings,
+                                        const Flags& flags) {
   if (!settings.IsValid()) {
     VALIDATION_LOG << "Invalid settings for Vulkan context creation.";
     return {};
@@ -52,7 +53,7 @@ ScopedObject<Context> ContextVK::Create(const Settings& settings) {
   impeller_settings.enable_validation = settings.enable_validation;
   sContextVKProcAddressCallback = settings.instance_proc_address_callback;
   impeller_settings.proc_address_callback = ContextVKGetInstanceProcAddress;
-  impeller_settings.flags = impeller::Flags{};
+  impeller_settings.flags = flags;
   auto impeller_context =
       impeller::ContextVK::Create(std::move(impeller_settings));
   sContextVKProcAddressCallback = nullptr;

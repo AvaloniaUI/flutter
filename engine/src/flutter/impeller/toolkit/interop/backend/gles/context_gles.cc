@@ -12,7 +12,8 @@
 namespace impeller::interop {
 
 ScopedObject<Context> ContextGLES::Create(
-    std::function<void*(const char* gl_proc_name)> proc_address_callback) {
+    std::function<void*(const char* gl_proc_name)> proc_address_callback,
+    const Flags& flags) {
   auto proc_table = std::make_unique<ProcTableGLES>(
       impeller::ProcTableGLES(std::move(proc_address_callback)));
   if (!proc_table || !proc_table->IsValid()) {
@@ -28,7 +29,7 @@ ScopedObject<Context> ContextGLES::Create(
           impeller_framebuffer_blend_shaders_gles_length),
   };
   auto impeller_context = impeller::ContextGLES::Create(
-      Flags{}, std::move(proc_table), shader_mappings, false);
+      flags, std::move(proc_table), shader_mappings, false);
   if (!impeller_context) {
     VALIDATION_LOG << "Could not create Impeller context.";
     return {};

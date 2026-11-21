@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 
+#include "impeller/base/flags.h"
 #include "impeller/toolkit/interop/backend/gles/reactor_worker_gles.h"
 #include "impeller/toolkit/interop/context.h"
 
@@ -16,7 +17,8 @@ namespace impeller::interop {
 class ContextGLES final : public Context {
  public:
   static ScopedObject<Context> Create(
-      std::function<void*(const char* gl_proc_name)> proc_address_callback);
+      std::function<void*(const char* gl_proc_name)> proc_address_callback,
+      const Flags& flags = {});
 
   static ScopedObject<Context> Create(
       std::shared_ptr<impeller::Context> context,

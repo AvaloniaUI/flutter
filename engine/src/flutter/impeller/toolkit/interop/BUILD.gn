@@ -33,6 +33,8 @@ impeller_component("interop_base") {
     "color_filter.h",
     "color_source.cc",
     "color_source.h",
+    "context_options.cc",
+    "context_options.h",
     "context.cc",
     "context.h",
     "dl.cc",

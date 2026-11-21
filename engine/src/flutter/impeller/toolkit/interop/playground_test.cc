@@ -4,6 +4,8 @@
 
 #include "impeller/toolkit/interop/playground_test.h"
 
+#include "impeller/toolkit/interop/context_options.h"
+
 #include "impeller/toolkit/interop/impeller.hpp"
 
 #if IMPELLER_ENABLE_METAL
@@ -57,11 +59,15 @@ void PlaygroundTest::TearDown() {
 }
 
 ScopedObject<Context> PlaygroundTest::CreateContext() const {
+  auto options = Adopt<ContextOptions>(ImpellerContextOptionsNew());
+  ImpellerContextOptionsSetUseSDFs(
+      options.GetC(), GetBackend() == PlaygroundBackend::kMetalSDF ||
+                          GetBackend() == PlaygroundBackend::kOpenGLESSDF);
   switch (GetBackend()) {
     case PlaygroundBackend::kMetal:
     case PlaygroundBackend::kMetalSDF:
-      return Adopt<Context>(
-          ImpellerContextCreateMetalNew(ImpellerGetVersion()));
+      return Adopt<Context>(ImpellerContextCreateMetalWithOptionsNew(
+          ImpellerGetVersion(), options.GetC()));
     case PlaygroundBackend::kOpenGLES:
     case PlaygroundBackend::kOpenGLESSDF: {
       Playground::GLProcAddressResolver playground_gl_proc_address_callback =
@@ -71,9 +77,9 @@ ScopedObject<Context> PlaygroundTest::CreateContext() const {
         return (*reinterpret_cast<Playground::GLProcAddressResolver*>(
             user_data))(proc_name);
       };
-      return Adopt<Context>(ImpellerContextCreateOpenGLESNew(
+      return Adopt<Context>(ImpellerContextCreateOpenGLESWithOptionsNew(
           ImpellerGetVersion(), gl_proc_address_callback,
-          &playground_gl_proc_address_callback));
+          &playground_gl_proc_address_callback, options.GetC()));
     }
     case PlaygroundBackend::kVulkan:
       ImpellerContextVulkanSettings settings = {};
@@ -92,8 +98,8 @@ ScopedObject<Context> PlaygroundTest::CreateContext() const {
           return nullptr;
         }
       };
-      return Adopt<Context>(
-          ImpellerContextCreateVulkanNew(ImpellerGetVersion(), &settings));
+      return Adopt<Context>(ImpellerContextCreateVulkanWithOptionsNew(
+          ImpellerGetVersion(), &settings, options.GetC()));
   }
   FML_UNREACHABLE();
 }

@@ -159,6 +159,11 @@ IMPELLER_EXTERN_C_BEGIN
 IMPELLER_DEFINE_HANDLE(ImpellerContext);
 
 //------------------------------------------------------------------------------
+/// Options read when a context is created.
+///
+IMPELLER_DEFINE_HANDLE(ImpellerContextOptions);
+
+//------------------------------------------------------------------------------
 /// Display lists represent encoded rendering intent. These objects are
 /// immutable, reusable, thread-safe, and context-agnostic.
 ///
@@ -729,6 +734,64 @@ IMPELLER_EXPORT
 uint32_t ImpellerGetVersion();
 
 //------------------------------------------------------------------------------
+// Context Options
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+/// @brief      Create context options with every option off.
+///
+/// @return     The context options.
+///
+IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerContextOptions IMPELLER_NULLABLE
+ImpellerContextOptionsNew();
+
+//------------------------------------------------------------------------------
+/// @brief      Retain a strong reference to the object. The object can be NULL
+///             in which case this method is a no-op.
+///
+/// @param[in]  options  The context options.
+///
+IMPELLER_EXPORT
+void ImpellerContextOptionsRetain(
+    ImpellerContextOptions IMPELLER_NULLABLE options);
+
+//------------------------------------------------------------------------------
+/// @brief      Release a previously retained reference to the object. The
+///             object can be NULL in which case this method is a no-op.
+///
+/// @param[in]  options  The context options.
+///
+IMPELLER_EXPORT
+void ImpellerContextOptionsRelease(
+    ImpellerContextOptions IMPELLER_NULLABLE options);
+
+//------------------------------------------------------------------------------
+/// @brief      Set whether rectangles, rounded rectangles, ovals and circles
+///             are drawn with signed distance fields.
+///
+/// @param[in]  options   The context options.
+/// @param[in]  use_sdfs  Whether to use signed distance fields.
+///
+IMPELLER_EXPORT
+void ImpellerContextOptionsSetUseSDFs(ImpellerContextOptions IMPELLER_NONNULL
+                                          options,
+                                      bool use_sdfs);
+
+//------------------------------------------------------------------------------
+/// @brief      Set whether framebuffers wrapped with
+///             `ImpellerSurfaceCreateWrappedFBONew` have a top-left origin,
+///             as with ANGLE's `EGL_SURFACE_ORIENTATION_INVERT_Y_ANGLE`.
+///             OpenGL (ES) only.
+///
+/// @param[in]  options   The context options.
+/// @param[in]  top_left  Whether wrapped framebuffers have a top-left origin.
+///
+IMPELLER_EXPORT
+void ImpellerContextOptionsSetTopLeftDefaultFramebufferOrigin(
+    ImpellerContextOptions IMPELLER_NONNULL options,
+    bool top_left);
+
+//------------------------------------------------------------------------------
 // Context
 //------------------------------------------------------------------------------
 
@@ -787,6 +850,59 @@ IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerContext IMPELLER_NULLABLE
 ImpellerContextCreateVulkanNew(
     uint32_t version,
     const ImpellerContextVulkanSettings* IMPELLER_NONNULL settings);
+
+//------------------------------------------------------------------------------
+/// @brief      Create an OpenGL(ES) Impeller context with options.
+///
+/// @see        `ImpellerContextCreateOpenGLESNew`
+///
+/// @param[in]  version  The version of the Impeller standalone API.
+/// @param[in]  gl_proc_address_callback
+///                      The gl proc address callback.
+/// @param[in]  gl_proc_address_callback_user_data
+///                      The gl proc address callback user data baton.
+/// @param[in]  options  The context options. NULL selects the defaults.
+///
+/// @return     The context or NULL if one cannot be created.
+///
+IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerContext IMPELLER_NULLABLE
+ImpellerContextCreateOpenGLESWithOptionsNew(
+    uint32_t version,
+    ImpellerProcAddressCallback IMPELLER_NONNULL gl_proc_address_callback,
+    void* IMPELLER_NULLABLE gl_proc_address_callback_user_data,
+    ImpellerContextOptions IMPELLER_NULLABLE options);
+
+//------------------------------------------------------------------------------
+/// @brief      Create a Metal context with options.
+///
+/// @see        `ImpellerContextCreateMetalNew`
+///
+/// @param[in]  version  The version specified in the IMPELLER_VERSION macro.
+/// @param[in]  options  The context options. NULL selects the defaults.
+///
+/// @return     The Metal context or NULL if one cannot be created.
+///
+IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerContext IMPELLER_NULLABLE
+ImpellerContextCreateMetalWithOptionsNew(
+    uint32_t version,
+    ImpellerContextOptions IMPELLER_NULLABLE options);
+
+//------------------------------------------------------------------------------
+/// @brief      Create a Vulkan context with options.
+///
+/// @see        `ImpellerContextCreateVulkanNew`
+///
+/// @param[in]  version   The version specified in the IMPELLER_VERSION macro.
+/// @param[in]  settings  The Vulkan settings.
+/// @param[in]  options   The context options. NULL selects the defaults.
+///
+/// @return     The Vulkan context or NULL if one cannot be created.
+///
+IMPELLER_EXPORT IMPELLER_NODISCARD ImpellerContext IMPELLER_NULLABLE
+ImpellerContextCreateVulkanWithOptionsNew(
+    uint32_t version,
+    const ImpellerContextVulkanSettings* IMPELLER_NONNULL settings,
+    ImpellerContextOptions IMPELLER_NULLABLE options);
 
 //------------------------------------------------------------------------------
 /// @brief      Retain a strong reference to the object. The object can be NULL

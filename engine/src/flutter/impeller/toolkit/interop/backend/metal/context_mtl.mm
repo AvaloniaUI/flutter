@@ -26,11 +26,11 @@ CreateShaderLibraryMappings() {
               impeller_compute_shaders_data, impeller_compute_shaders_length)};
 }
 
-ScopedObject<Context> ContextMTL::Create() {
+ScopedObject<Context> ContextMTL::Create(const Flags& flags) {
   auto impeller_context =
-      impeller::ContextMTL::Create(Flags{}, CreateShaderLibraryMappings(),  //
-                                   std::make_shared<fml::SyncSwitch>(),     //
-                                   "Impeller"                               //
+      impeller::ContextMTL::Create(flags, CreateShaderLibraryMappings(),  //
+                                   std::make_shared<fml::SyncSwitch>(),   //
+                                   "Impeller"                             //
       );
   if (!impeller_context) {
     VALIDATION_LOG << "Could not create Impeller context.";

@@ -59,9 +59,17 @@ struct Proc {
   PROC(ImpellerColorSourceRelease)                                \
   PROC(ImpellerColorSourceRetain)                                 \
   PROC(ImpellerContextCreateMetalNew)                             \
+  PROC(ImpellerContextCreateMetalWithOptionsNew)                  \
   PROC(ImpellerContextCreateOpenGLESNew)                          \
+  PROC(ImpellerContextCreateOpenGLESWithOptionsNew)               \
   PROC(ImpellerContextCreateVulkanNew)                            \
+  PROC(ImpellerContextCreateVulkanWithOptionsNew)                 \
   PROC(ImpellerContextGetVulkanInfo)                              \
+  PROC(ImpellerContextOptionsNew)                                 \
+  PROC(ImpellerContextOptionsRelease)                             \
+  PROC(ImpellerContextOptionsRetain)                              \
+  PROC(ImpellerContextOptionsSetTopLeftDefaultFramebufferOrigin)  \
+  PROC(ImpellerContextOptionsSetUseSDFs)                          \
   PROC(ImpellerContextRelease)                                    \
   PROC(ImpellerContextRetain)                                     \
   PROC(ImpellerDisplayListBuilderClipOval)                        \
@@ -324,6 +332,7 @@ class Object {
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerColorFilter);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerColorSource);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerContext);
+IMPELLER_HPP_DEFINE_TRAITS(ImpellerContextOptions);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerDisplayList);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerDisplayListBuilder);
 IMPELLER_HPP_DEFINE_TRAITS(ImpellerFragmentProgram);
@@ -372,6 +381,37 @@ class Mapping {
 };
 
 //------------------------------------------------------------------------------
+/// @see      ImpellerContextOptions
+///
+class ContextOptions
+    : public Object<ImpellerContextOptions, ImpellerContextOptionsTraits> {
+ public:
+  ContextOptions()
+      : Object(gGlobalProcTable.ImpellerContextOptionsNew(), AdoptTag::kAdopt) {
+  }
+
+  ContextOptions(ImpellerContextOptions options, AdoptTag tag)
+      : Object(options, tag) {}
+
+  //----------------------------------------------------------------------------
+  /// @see      ImpellerContextOptionsSetUseSDFs
+  ///
+  ContextOptions& SetUseSDFs(bool use_sdfs) {
+    gGlobalProcTable.ImpellerContextOptionsSetUseSDFs(Get(), use_sdfs);
+    return *this;
+  }
+
+  //----------------------------------------------------------------------------
+  /// @see      ImpellerContextOptionsSetTopLeftDefaultFramebufferOrigin
+  ///
+  ContextOptions& SetTopLeftDefaultFramebufferOrigin(bool top_left) {
+    gGlobalProcTable.ImpellerContextOptionsSetTopLeftDefaultFramebufferOrigin(
+        Get(), top_left);
+    return *this;
+  }
+};
+
+//------------------------------------------------------------------------------
 /// @see      ImpellerContext
 ///
 class Context : public Object<ImpellerContext, ImpellerContextTraits> {
@@ -379,10 +419,11 @@ class Context : public Object<ImpellerContext, ImpellerContextTraits> {
   Context(ImpellerContext context, AdoptTag tag) : Object(context, tag) {}
 
   //----------------------------------------------------------------------------
-  /// @see      ImpellerContextCreateOpenGLESNew
+  /// @see      ImpellerContextCreateOpenGLESWithOptionsNew
   ///
   static Context OpenGLES(
-      const std::function<void*(const char*)>& gl_proc_address_resolver) {
+      const std::function<void*(const char*)>& gl_proc_address_resolver,
+      const ContextOptions* options = nullptr) {
     struct UserData {
       std::function<void*(const char*)> resolver;
     };
@@ -392,12 +433,10 @@ class Context : public Object<ImpellerContext, ImpellerContextTraits> {
                                               void* user_data) -> void* {
       return reinterpret_cast<UserData*>(user_data)->resolver(proc_name);
     };
-    return Context(
-        gGlobalProcTable.ImpellerContextCreateOpenGLESNew(IMPELLER_VERSION,  //
-                                                          callback,          //
-                                                          &user_data         //
-                                                          ),
-        AdoptTag::kAdopt);
+    return Context(gGlobalProcTable.ImpellerContextCreateOpenGLESWithOptionsNew(
+                       IMPELLER_VERSION, callback, &user_data,
+                       options ? options->Get() : nullptr),
+                   AdoptTag::kAdopt);
   }
 
   //----------------------------------------------------------------------------

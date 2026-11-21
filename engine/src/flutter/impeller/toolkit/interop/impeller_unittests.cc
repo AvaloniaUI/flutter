@@ -8,6 +8,7 @@
 #include "impeller/base/allocation.h"
 #include "impeller/renderer/backend/gles/context_gles.h"
 #include "impeller/toolkit/interop/context.h"
+#include "impeller/toolkit/interop/context_options.h"
 #include "impeller/toolkit/interop/dl.h"
 #include "impeller/toolkit/interop/dl_builder.h"
 #include "impeller/toolkit/interop/formats.h"
@@ -33,6 +34,26 @@ class ContextSub : public hpp::Context {};
 TEST_P(InteropPlaygroundTest, CanCreateContext) {
   auto context = CreateContext();
   ASSERT_TRUE(context);
+}
+
+TEST_P(InteropPlaygroundTest, ContextOptionsSetFlags) {
+  auto options = Adopt<ContextOptions>(ImpellerContextOptionsNew());
+  ASSERT_TRUE(options);
+  EXPECT_EQ(options->GetFlags(), Flags{});
+
+  ImpellerContextOptionsSetUseSDFs(options.GetC(), true);
+  ImpellerContextOptionsSetTopLeftDefaultFramebufferOrigin(options.GetC(),
+                                                           true);
+  EXPECT_TRUE(options->GetFlags().use_sdfs);
+  EXPECT_TRUE(options->GetFlags().top_left_default_framebuffer_origin);
+}
+
+TEST_P(InteropPlaygroundTest, ContextsOfSDFBackendsUseSDFs) {
+  auto context = CreateContext();
+  ASSERT_TRUE(context);
+  const bool sdf_backend = GetBackend() == PlaygroundBackend::kMetalSDF ||
+                           GetBackend() == PlaygroundBackend::kOpenGLESSDF;
+  EXPECT_EQ(context->GetContext()->GetFlags().use_sdfs, sdf_backend);
 }
 
 TEST_P(InteropPlaygroundTest, CanCreateDisplayListBuilder) {
